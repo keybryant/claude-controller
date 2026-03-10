@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(timeout 120 python main.py 2>&1)",
+      "Bash(python -c \"import websockets; print\\(websockets.__version__\\)\")",
+      "Bash(netstat -ano | findstr \":8080\" | head -5)",
+      "Bash(taskkill /PID 11580 /F 2>&1)",
+      "Bash(cmd /c \"taskkill /PID 11580 /F\")",
+      "Bash(cmd /c \"taskkill /PID 11580 /F\" 2>&1 || true\nnetstat -ano | findstr \":8080\" | head -3)",
+      "Bash(python -c \"\nimport subprocess, sys\nr = subprocess.run\\(['cmd','/c','taskkill /PID 11580 /F'], capture_output=True, text=True\\)\nprint\\(r.stdout, r.stderr\\)\n\")",
+      "Bash(python -c \"import shutil; print\\(shutil.which\\('claude'\\) or shutil.which\\('claude.cmd'\\) or 'NOT FOUND'\\)\")",
+      "Bash(python -c \"\nimport subprocess\nr = subprocess.run\\(['cmd','/c','taskkill /F /IM python.exe /FI \\\\\"WINDOWTITLE eq mock*\\\\\"'], \n                   capture_output=True, text=True\\)\nprint\\(r.stdout or r.stderr\\)\n\" 2>/dev/null; true)",
+      "Bash(python main.py 2>&1)",
+      "Bash(python -c \"import git_ops, handler; print\\('OK'\\)\")"
+    ]
+  }
+}
