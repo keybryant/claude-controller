@@ -8,6 +8,7 @@ import asyncio
 import logging
 import os
 import shutil
+import tempfile
 import uuid
 from dataclasses import dataclass, field
 
@@ -113,7 +114,8 @@ class ClaudeRunner:
         cmd = [claude_bin, "--dangerously-skip-permissions"]
         if session.has_prior_turn:
             cmd.append("--continue")
-        cmd.extend(["--print", prompt])
+        # 通过 stdin 传 prompt，避免 Windows 下命令行参数中换行导致只收到首行（见 #8811）
+        cmd.append("--print")
 
         env = os.environ.copy()
         env.pop("CLAUDECODE", None)
@@ -121,13 +123,29 @@ class ClaudeRunner:
 
         logger.info("任务 %s | 目录: %s | cmd: %s ...", task_id[:8], session.project_dir, " ".join(cmd[:3]))
 
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            cwd=session.project_dir,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=env,
-        )
+        # 临时文件写入完整 prompt（含换行），子进程从 stdin 读取，避免 Windows 命令行截断
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb", delete=False, suffix=".txt", prefix="claude_prompt_"
+            ) as tmp_fd:
+                tmp_path = tmp_fd.name
+                tmp_fd.write(prompt.encode("utf-8"))
+            with open(tmp_path, "rb") as stdin_file:
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    cwd=session.project_dir,
+                    stdin=stdin_file,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=env,
+                )
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                except Exception as e:
+                    logger.debug("删除临时 prompt 文件失败: %s", e)
 
         output_lines: list[str] = []
 
